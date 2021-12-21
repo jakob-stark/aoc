@@ -34,8 +34,8 @@ def part1(i, p1=True):
         plsco[pl] += plpos[pl]
         c += 3
 
-    print(c)
-    print(plsco)
+    #print(c)
+    #print(plsco)
     print(c*min(plsco))
 
 
@@ -43,55 +43,29 @@ def part2(i):
     ty = np.uint64
 
     pp1, pp2 = list(parse(i))
-    pp1, pp2 = pp1-1, pp2-1
 
-    uni = np.zeros((10,10,31,31), dtype=ty)
-    uni[pp1,pp2,0,0] = 1
+    uni = np.zeros((10,22,10,22), dtype=ty)
+    uni[pp1-1,0,pp2-1,0] = 1
 
-    dist = np.array((0,0,0,1,3,6,7,6,3,1),dtype=ty)
-    plwin = np.array((0,0), dtype=ty)
+    win = np.array((0,0), dtype=ty)
 
-    def cyclic_convolve(a):
-        return np.sum(np.pad(np.convolve(a,dist), (0,1), constant_values=0).reshape((2,-1)), axis=0)
+    c = np.array((0,0,0,1,3,6,7,6,3,1), dtype=ty)
+    C = np.zeros((10,22,10,22),dtype=ty)
+    for i,j in np.ndindex((21,10)):
+        C[:,i,j,i] = np.roll(c,j)
 
-    c = np.array(((0,0,0,1,3,6,7,6,3,1),
-                  (1,0,0,0,1,3,6,7,6,3),
-                  (3,1,0,0,0,1,3,6,7,6),
-                  (6,3,1,0,0,0,1,3,6,7),
-                  (7,6,3,1,0,0,0,1,3,6),
-                  (6,7,6,3,1,0,0,0,1,3),
-                  (3,6,7,6,3,1,0,0,0,1),
-                  (1,3,6,7,6,3,1,0,0,0),
-                  (0,1,3,6,7,6,3,1,0,0),
-                  (0,0,1,3,6,7,6,3,1,0))).transpose()
-    def cyclic_convolvex(a):
-        return np.einsum('ij,j->i', c, a)
+    D = np.zeros((10,22,10,22),dtype=ty)
+    for i, j in np.ndindex((10,21)):
+        D[i,min(j+i+1,21),i,j] = 1
 
-
-
-    #print(cyclic_convolvex(dist))
-    #print(cyclic_convolve(dist))
-
-    def calc_points(u,pl):
-        res = u.copy()
-        res[:,:,:21,:21] = 0
-        if pl == 0:
-            for i, j, k, l in np.ndindex((10,10,21,21)):
-                res[i,j,k+i+1,l] += u[i,j,k,l]
-        else:
-            for i, j, k, l in np.ndindex((10,10,21,21)):
-                res[i,j,k,l+j+1] += u[i,j,k,l]
-        return res
+    T = np.einsum('ijkl,kluv->ijuv', D,C)
 
     t = iter(it.cycle((0,1)))
-    while np.count_nonzero(uni[:,:,:21,:21]) > 0:
-        pl = next(t)
-        uni[:,:,:21,:21] = np.apply_along_axis(cyclic_convolve, pl, uni[:,:,:21,:21])
-        uni = calc_points(uni,pl)
+    while np.count_nonzero(uni[:,:21,:,:21]) > 0:
+        uni = np.einsum('ijkl,klst->stij',T,uni)
+        win[next(t)] += np.sum(uni[:,:21,:,21])
 
-    w1 = np.sum(uni[:,:,21:,:])
-    w2 = np.sum(uni[:,:,:,21:])
-    print(max(w1,w2))
+    print(np.max(win))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('')
