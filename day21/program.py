@@ -40,57 +40,58 @@ def part1(i, p1=True):
 
 
 def part2(i):
-    ty = np.float128
+    ty = np.uint64
 
     pp1, pp2 = list(parse(i))
     pp1, pp2 = pp1-1, pp2-1
-    #pp1, pp2 = 0,0
 
-    #uni = np.zeros((10,10,40,40), dtype=ty)
-    #uni[pp1,pp2,0,0] = 1
-
-    mat = [ np.zeros((40,10), dtype=ty) for p in range(2) ]
-    mat[0][0,pp1] = 1
-    mat[1][0,pp2] = 1
+    uni = np.zeros((10,10,31,31), dtype=ty)
+    uni[pp1,pp2,0,0] = 1
 
     dist = np.array((0,0,0,1,3,6,7,6,3,1),dtype=ty)
     plwin = np.array((0,0), dtype=ty)
 
-    def cyclic_convolve(a,b):
-        return np.sum(np.pad(np.convolve(a,b), (0,1), constant_values=0).reshape((2,-1)), axis=0)
-    cyclic_convolve = np.vectorize(cyclic_convolve, signature='(n),(n)->(n)')
+    def cyclic_convolve(a):
+        return np.sum(np.pad(np.convolve(a,dist), (0,1), constant_values=0).reshape((2,-1)), axis=0)
 
-    def calc_points(m):
-        res = np.zeros_like(m)
-        for i, j in np.ndindex(m.shape):
-            if m[i,j] > 0:
-                res[i+j+1,j] += m[i,j]
+    c = np.array(((0,0,0,1,3,6,7,6,3,1),
+                  (1,0,0,0,1,3,6,7,6,3),
+                  (3,1,0,0,0,1,3,6,7,6),
+                  (6,3,1,0,0,0,1,3,6,7),
+                  (7,6,3,1,0,0,0,1,3,6),
+                  (6,7,6,3,1,0,0,0,1,3),
+                  (3,6,7,6,3,1,0,0,0,1),
+                  (1,3,6,7,6,3,1,0,0,0),
+                  (0,1,3,6,7,6,3,1,0,0),
+                  (0,0,1,3,6,7,6,3,1,0))).transpose()
+    def cyclic_convolvex(a):
+        return np.einsum('ij,j->i', c, a)
+
+
+
+    #print(cyclic_convolvex(dist))
+    #print(cyclic_convolve(dist))
+
+    def calc_points(u,pl):
+        res = u.copy()
+        res[:,:,:21,:21] = 0
+        if pl == 0:
+            for i, j, k, l in np.ndindex((10,10,21,21)):
+                res[i,j,k+i+1,l] += u[i,j,k,l]
+        else:
+            for i, j, k, l in np.ndindex((10,10,21,21)):
+                res[i,j,k,l+j+1] += u[i,j,k,l]
         return res
 
-    t = iter(it.cycle(((0,1),(1,0))))
-    while np.count_nonzero(mat[0]) > 0 or np.count_nonzero(mat[1]) > 0:
-        #for i in range(21):
-        pl, ot = next(t)
+    t = iter(it.cycle((0,1)))
+    while np.count_nonzero(uni[:,:,:21,:21]) > 0:
+        pl = next(t)
+        uni[:,:,:21,:21] = np.apply_along_axis(cyclic_convolve, pl, uni[:,:,:21,:21])
+        uni = calc_points(uni,pl)
 
-        mat[pl] = cyclic_convolve(mat[pl], dist)
-        mat[pl] = calc_points(mat[pl])
-        mat[ot] = 27*mat[ot]
-
-        won = np.sum(mat[pl][21:,:])
-        total = np.sum(mat[pl])
-
-        mat[pl][21:,:] = 0
-        mat[ot] = np.around((mat[ot]*(total-won)/total))
-        #print(np.sum(mat[pl]))
-        #print(np.sum(mat[ot]))
-
-        #print(mat[pl])
-
-        plwin[pl] += won
-        #plwin[pl] += np.sum(mat[pl][21:,:])
-        #mat[pl][21:,:] = 0
-
-    print(np.max(plwin.astype(np.uint64)))
+    w1 = np.sum(uni[:,:,21:,:])
+    w2 = np.sum(uni[:,:,:,21:])
+    print(max(w1,w2))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('')
